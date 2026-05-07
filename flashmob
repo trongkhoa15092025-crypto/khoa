@@ -1,0 +1,152 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/flashmob/refs/heads/main/flashmob.lua"))()
+-- LocalScript
+-- StarterPlayer > StarterPlayerScripts
+
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
+
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local camera = workspace.CurrentCamera
+
+--------------------------------------------------
+-- SETTINGS
+--------------------------------------------------
+
+local WALK_SPEED = 16
+local SPRINT_SPEED = 30
+
+local DASH_POWER = 90
+local SLIDE_POWER = 70
+
+--------------------------------------------------
+-- SPRINT
+--------------------------------------------------
+
+UIS.InputBegan:Connect(function(input,gpe)
+	if gpe then return end
+	
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		humanoid.WalkSpeed = SPRINT_SPEED
+		
+		TweenService:Create(
+			camera,
+			TweenInfo.new(0.2),
+			{FieldOfView = 85}
+		):Play()
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.LeftShift then
+		humanoid.WalkSpeed = WALK_SPEED
+		
+		TweenService:Create(
+			camera,
+			TweenInfo.new(0.2),
+			{FieldOfView = 70}
+		):Play()
+	end
+end)
+
+--------------------------------------------------
+-- DOUBLE JUMP
+--------------------------------------------------
+
+local canDouble = false
+local didDouble = false
+
+humanoid.StateChanged:Connect(function(old,new)
+	if new == Enum.HumanoidStateType.Freefall then
+		canDouble = true
+	end
+	
+	if new == Enum.HumanoidStateType.Landed then
+		canDouble = false
+		didDouble = false
+	end
+end)
+
+UIS.JumpRequest:Connect(function()
+	if canDouble and not didDouble then
+		didDouble = true
+		
+		root.Velocity = Vector3.new(
+			root.Velocity.X,
+			65,
+			root.Velocity.Z
+		)
+	end
+end)
+
+--------------------------------------------------
+-- DASH
+--------------------------------------------------
+
+local dashCooldown = false
+
+UIS.InputBegan:Connect(function(input,gpe)
+	if gpe then return end
+	
+	if input.KeyCode == Enum.KeyCode.Q and not dashCooldown then
+		
+		dashCooldown = true
+		
+		root.Velocity = root.CFrame.LookVector * DASH_POWER
+		
+		wait(0.4)
+		dashCooldown = false
+	end
+end)
+
+--------------------------------------------------
+-- SLIDE
+--------------------------------------------------
+
+UIS.InputBegan:Connect(function(input,gpe)
+	if gpe then return end
+	
+	if input.KeyCode == Enum.KeyCode.C then
+		
+		local slide = Instance.new("BodyVelocity")
+		slide.MaxForce = Vector3.new(1,0,1) * 30000
+		slide.Velocity = root.CFrame.LookVector * SLIDE_POWER
+		slide.Parent = root
+		
+		humanoid.HipHeight = 0.5
+		
+		wait(0.5)
+		
+		humanoid.HipHeight = 2
+		slide:Destroy()
+	end
+end)
+
+--------------------------------------------------
+-- WALL JUMP
+--------------------------------------------------
+
+UIS.InputBegan:Connect(function(input,gpe)
+	if gpe then return end
+	
+	if input.KeyCode == Enum.KeyCode.Space then
+		
+		local ray = Ray.new(
+			root.Position,
+			root.CFrame.LookVector * 4
+		)
+		
+		local hit = workspace:FindPartOnRay(ray,char)
+		
+		if hit and humanoid.FloorMaterial == Enum.Material.Air then
+			
+			root.Velocity = Vector3.new(
+				-root.CFrame.LookVector.X * 60,
+				75,
+				-root.CFrame.LookVector.Z * 60
+			)
+		end
+	end
+end)
